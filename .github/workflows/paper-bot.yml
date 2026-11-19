@@ -1,0 +1,42 @@
+
+name: Paper trading bot
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/5 13-21 * * 1-5'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: paper-trading-bot
+  cancel-in-progress: false
+
+jobs:
+  run-paper-bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - name: Run paper bot
+        env:
+          TICKERS: PANW,BRBR,WMT
+          PAPER_STARTING_CASH_USD: '10'
+          RISK_PER_TRADE: '0.01'
+          MAX_DAILY_LOSS_USD: '0.30'
+          MAX_TRADES_PER_DAY: '2'
+        run: python paper_bot.py
+      - name: Save paper ledger
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+users.noreply.github.com"
+          git add data
+          if ! git diff --cached --quiet; then
+            git commit -m "Update paper trading ledger"
+            git push
+          fi
